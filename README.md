@@ -4,7 +4,9 @@
 
 <h1 align="center">luna-ocr</h1>
 
-Fast screen-region OCR for Linux using eight cloud vision models. A Flameshot selection becomes literal clipboard text; regions without readable text become a short visual description; blank regions leave the clipboard untouched.
+Fast screen-region OCR for Linux using eight cloud vision models. A Flameshot selection becomes English clipboard text, with non-English text translated automatically; regions without readable text become a short visual description; blank regions leave the clipboard untouched.
+
+An independent visual-assistant mode opens a small question dialog, captures a region, and copies a concise answer. It supplies the last five text answers as optional continuity while explicitly treating them as potentially unrelated and untrusted. Prior screenshots are never retained.
 
 ## Models
 
@@ -17,9 +19,12 @@ Download `luna-ocr-linux-x64` and its checksum from the latest GitHub release, v
 ```bash
 luna-ocr credentials set openai
 luna-ocr capture
+luna-ocr ask
+luna-ocr ask "Explain this error"
 luna-ocr model set groq-qwen
 luna-ocr compare screenshot.png
 luna-ocr usage
+luna-ocr history clear
 ```
 
 The credential command reads directly from the current terminal and waits without expiring. Paste only the provider's API key at the hidden-input prompt, then press Enter.
@@ -27,6 +32,8 @@ The credential command reads directly from the current terminal and waits withou
 API keys are accepted through provider environment variables for portable use. On a systemd desktop, `credentials set` stores user-scoped encrypted credentials under `~/.config/credstore.encrypted`; plaintext is never written by luna-ocr.
 
 `luna-ocr usage` displays calls, tokens, average latency, and estimated spend per model. The append-only ledger under `$XDG_STATE_HOME/luna-ocr/usage.jsonl` contains metrics only—never screenshots or extracted content. Use `--json` for machine-readable totals.
+
+Visual-assistant continuity is limited to five responses in `$XDG_STATE_HOME/luna-ocr/assistant-history.json`, stored with private permissions. `luna-ocr history` shows it and `luna-ocr history clear` removes it.
 
 ## Privacy
 

@@ -10,25 +10,35 @@ export interface InferenceResult {
   cost?: number;
 }
 
+export interface InferenceOptions {
+  systemPrompt?: string;
+  userText?: string;
+}
+
 function dataUrl(bytes: Uint8Array, mime: string): string {
   return `data:${mime};base64,${Buffer.from(bytes).toString("base64")}`;
 }
 
-export function buildRequest(model: ModelSpec, image: string): Record<string, unknown> {
+export function buildRequest(model: ModelSpec, image: string, options: InferenceOptions = {}): Record<string, unknown> {
+  const systemPrompt = options.systemPrompt ?? SYSTEM_PROMPT;
+  const userText = options.userText ?? "Process this image.";
   if (model.responsesApi) {
     return {
       model: model.model,
       service_tier: model.fastTier ? "fast" : undefined,
       reasoning: { effort: "none" },
-      input: [{ role: "user", content: [{ type: "input_text", text: SYSTEM_PROMPT }, { type: "input_image", image_url: image, detail: "original" }] }],
+      input: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: [{ type: "input_text", text: userText }, { type: "input_image", image_url: image, detail: "original" }] },
+      ],
       text: { format: { type: "json_schema", name: "ocr_result", strict: true, schema: jsonSchema } },
     };
   }
   return {
     model: model.model,
     messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: [{ type: "text", text: "Process this image." }, { type: "image_url", image_url: { url: image, detail: "auto" } }] },
+      { role: "system", content: systemPrompt },
+      { role: "user", content: [{ type: "text", text: userText }, { type: "image_url", image_url: { url: image, detail: "auto" } }] },
     ],
     reasoning_effort: model.provider === "cerebras" || model.provider === "groq" ? "none" : undefined,
     reasoning: model.provider === "baseten" || model.provider === "together" ? { enabled: false } : undefined,
@@ -43,13 +53,13 @@ function outputText(model: ModelSpec, body: any): string {
   return body.choices?.[0]?.message?.content ?? "";
 }
 
-export async function infer(model: ModelSpec, bytes: Uint8Array, mime = "image/png", fetcher: typeof fetch = fetch): Promise<InferenceResult> {
+export async function infer(model: ModelSpec, bytes: Uint8Array, mime = "image/png", fetcher: typeof fetch = fetch, options: InferenceOptions = {}): Promise<InferenceResult> {
   const key = await readApiKey(model.provider);
   const started = performance.now();
   const response = await fetcher(model.endpoint, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify(buildRequest(model, dataUrl(bytes, mime))),
+    body: JSON.stringify(buildRequest(model, dataUrl(bytes, mime), options)),
     signal: AbortSignal.timeout(30_000),
   });
   if (!response.ok) throw new Error(`${model.provider} returned HTTP ${response.status}`);

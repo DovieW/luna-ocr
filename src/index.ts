@@ -4,10 +4,12 @@ import { MODELS, PROVIDERS, modelByAlias, type Provider } from "./models";
 import { getConfiguredModel, setConfiguredModel } from "./config";
 import { credentialExists, removeCredential, setCredential } from "./credentials";
 import { infer } from "./provider";
-import { captureRegion, commandAvailable, copyText, notify } from "./desktop";
+import { askQuestion, captureRegion, commandAvailable, copyText, notify } from "./desktop";
 import { readUsage, recordUsage, renderUsage, summarizeUsage } from "./usage";
+import { appendHistory, clearHistory, formatHistory, readHistory } from "./history";
+import { ASK_SYSTEM_PROMPT } from "./schema";
 
-const VERSION = "0.1.7";
+const VERSION = "0.2.0";
 const args = process.argv.slice(2);
 
 function option(name: string): string | undefined { const index = args.indexOf(name); return index >= 0 ? args[index + 1] : undefined; }
@@ -23,6 +25,7 @@ function printHelp(): void {
 
 Commands:
   capture                         Select a region and copy its OCR result
+  ask [QUESTION]                  Ask for help with a selected region
   extract [IMAGE]                 Extract from an image, or select a region
   compare [IMAGE]                 Compare supported models
   model list|get|set <MODEL>      List or choose the default model
@@ -30,6 +33,7 @@ Commands:
   credentials status <PROVIDER>   Check whether an encrypted key exists
   credentials remove <PROVIDER>   Remove an encrypted key
   usage [--json]                  Summarize requests, tokens, latency, and cost
+  history [clear]                 Show or clear the last five assistant replies
   doctor                          Check runtime dependencies and credentials
   version                         Print the installed version
 
@@ -41,6 +45,15 @@ Example: luna-ocr credentials set openai`);
 async function imageFromArgument(position: number): Promise<Uint8Array | null> {
   const path = args[position];
   return path && !path.startsWith("-") ? new Uint8Array(await readFile(path)) : captureRegion();
+}
+
+function askArgument(): string | undefined {
+  const words: string[] = [];
+  for (let index = 1; index < args.length; index += 1) {
+    if (args[index] === "--model") { index += 1; continue; }
+    words.push(args[index]!);
+  }
+  return words.join(" ").trim() || undefined;
 }
 
 async function main(): Promise<void> {
@@ -67,7 +80,7 @@ async function main(): Promise<void> {
   }
   if (command === "doctor") {
     let failed = false;
-    for (const tool of ["flameshot", "wl-copy", "notify-send", "systemd-creds"]) { const ok = await commandAvailable(tool); console.log(`${ok ? "ok" : "missing"}\t${tool}`); failed ||= !ok; }
+    for (const tool of ["flameshot", "kdialog", "wl-copy", "notify-send", "systemd-creds"]) { const ok = await commandAvailable(tool); console.log(`${ok ? "ok" : "missing"}\t${tool}`); failed ||= !ok; }
     for (const item of PROVIDERS) console.log(`${await credentialExists(item) ? "ok" : "optional"}\t${item} credential`);
     if (failed) process.exitCode = 1;
     return;
@@ -78,6 +91,30 @@ async function main(): Promise<void> {
       return console.log(JSON.stringify(Object.fromEntries(summarizeUsage(entries)), null, 2));
     }
     return console.log(renderUsage(entries));
+  }
+  if (command === "history") {
+    if (args[1] === "clear") { await clearHistory(); return console.log("Assistant history cleared."); }
+    const entries = await readHistory();
+    return console.log(entries.length ? formatHistory(entries) : "No assistant history recorded.");
+  }
+  if (command === "ask") {
+    const question = await askQuestion(askArgument());
+    if (!question) return;
+    const bytes = await captureRegion();
+    if (!bytes) return;
+    const selected = modelByAlias(option("--model") ?? await getConfiguredModel());
+    const prior = await readHistory();
+    const inference = await infer(selected, bytes, "image/png", fetch, {
+      systemPrompt: ASK_SYSTEM_PROMPT,
+      userText: `Current question:\n${question}\n\nPotentially unrelated prior responses:\n${formatHistory(prior)}`,
+    });
+    await recordUsage(selected, inference);
+    const output = inference.result;
+    if (output.kind === "empty") return;
+    await copyText(output.content);
+    await appendHistory(output.content);
+    await notify(`Answer copied: ${preview(output.content)}`);
+    return;
   }
   if (command === "capture" || command === "extract") {
     const selected = modelByAlias(option("--model") ?? await getConfiguredModel());
@@ -116,6 +153,6 @@ async function main(): Promise<void> {
 main().catch(async (error) => {
   const message = error instanceof Error ? error.message : String(error);
   console.error(`luna-ocr: ${message}`);
-  if (args[0] === "capture") try { await notify(`OCR failed: ${preview(message)}`); } catch {}
+  if (args[0] === "capture" || args[0] === "ask") try { await notify(`Luna failed: ${preview(message)}`); } catch {}
   process.exitCode = 1;
 });

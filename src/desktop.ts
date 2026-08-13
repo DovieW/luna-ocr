@@ -32,6 +32,14 @@ export function captureRegionCommand(path: string): string[] {
 }
 
 export async function copyText(text: string): Promise<void> { await run(["wl-copy", "--type", "text/plain;charset=utf-8"], { input: text }); }
+export async function askQuestion(initial?: string): Promise<string | null> {
+  if (initial?.trim()) return initial.trim();
+  const proc = Bun.spawn(["kdialog", "--title", "Ask Luna", "--inputbox", "How should I help with this region?"], {
+    stdin: "ignore", stdout: "pipe", stderr: "pipe",
+  });
+  const question = (await new Response(proc.stdout).text()).trim();
+  return await proc.exited === 0 && question ? question : null;
+}
 export function notificationCommand(body: string): string[] {
   return [
     "notify-send",
