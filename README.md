@@ -1,4 +1,8 @@
-# luna-ocr
+<p align="center">
+  <img src="assets/luna-ocr-logo.png" alt="luna-ocr logo" width="180">
+</p>
+
+<h1 align="center">luna-ocr</h1>
 
 Fast screen-region OCR for Linux using eight cloud vision models. A Flameshot selection becomes literal clipboard text; regions without readable text become a short visual description; blank regions leave the clipboard untouched.
 
@@ -18,7 +22,7 @@ luna-ocr compare screenshot.png
 luna-ocr usage
 ```
 
-The credential command waits without expiring. Paste only the provider's API key at the masked prompt, then press Enter.
+The credential command reads directly from the current terminal and waits without expiring. Paste only the provider's API key at the hidden-input prompt, then press Enter.
 
 API keys are accepted through provider environment variables for portable use. On a systemd desktop, `credentials set` stores user-scoped encrypted credentials under `~/.config/credstore.encrypted`; plaintext is never written by luna-ocr.
 
