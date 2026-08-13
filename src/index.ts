@@ -5,8 +5,9 @@ import { getConfiguredModel, setConfiguredModel } from "./config";
 import { credentialExists, removeCredential, setCredential } from "./credentials";
 import { infer } from "./provider";
 import { captureRegion, commandAvailable, copyText, notify } from "./desktop";
+import { readUsage, recordUsage, renderUsage, summarizeUsage } from "./usage";
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 const args = process.argv.slice(2);
 
 function option(name: string): string | undefined { const index = args.indexOf(name); return index >= 0 ? args[index + 1] : undefined; }
@@ -40,11 +41,20 @@ async function main(): Promise<void> {
     if (failed) process.exitCode = 1;
     return;
   }
+  if (command === "usage") {
+    const entries = await readUsage();
+    if (args.includes("--json")) {
+      return console.log(JSON.stringify(Object.fromEntries(summarizeUsage(entries)), null, 2));
+    }
+    return console.log(renderUsage(entries));
+  }
   if (command === "capture" || command === "extract") {
     const selected = modelByAlias(option("--model") ?? await getConfiguredModel());
     const bytes = command === "capture" ? await captureRegion() : await imageFromArgument(1);
     if (!bytes) return;
-    const output = (await infer(selected, bytes)).result;
+    const inference = await infer(selected, bytes);
+    await recordUsage(selected, inference);
+    const output = inference.result;
     if (command === "extract") return console.log(args.includes("--json") ? JSON.stringify(output) : output.content);
     if (output.kind === "empty") return;
     await copyText(output.content);
@@ -57,7 +67,11 @@ async function main(): Promise<void> {
     const aliases = option("--models")?.split(",") ?? MODELS.map((model) => model.alias);
     const selected = aliases.map(modelByAlias);
     const outcomes = await Promise.all(selected.map(async (model) => {
-      try { return { model, value: await infer(model, bytes) }; } catch (error) { return { model, error: error instanceof Error ? error.message : String(error) }; }
+      try {
+        const value = await infer(model, bytes);
+        await recordUsage(model, value);
+        return { model, value };
+      } catch (error) { return { model, error: error instanceof Error ? error.message : String(error) }; }
     }));
     for (const outcome of outcomes) {
       if ("error" in outcome) console.log(`${outcome.model.alias}\tERROR\t${outcome.error}`);
@@ -65,7 +79,7 @@ async function main(): Promise<void> {
     }
     return;
   }
-  console.log("Usage: luna-ocr capture|extract|compare|model|credentials|doctor|version");
+  console.log("Usage: luna-ocr capture|extract|compare|model|credentials|usage|doctor|version");
 }
 
 main().catch(async (error) => {

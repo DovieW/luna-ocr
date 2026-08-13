@@ -15,9 +15,12 @@ luna-ocr credentials set openai
 luna-ocr capture
 luna-ocr model set groq-qwen
 luna-ocr compare screenshot.png
+luna-ocr usage
 ```
 
 API keys are accepted through provider environment variables for portable use. On a systemd desktop, `credentials set` stores user-scoped encrypted credentials under `~/.config/credstore.encrypted`; plaintext is never written by luna-ocr.
+
+`luna-ocr usage` displays calls, tokens, average latency, and estimated spend per model. The append-only ledger under `$XDG_STATE_HOME/luna-ocr/usage.jsonl` contains metrics only—never screenshots or extracted content. Use `--json` for machine-readable totals.
 
 ## Privacy
 

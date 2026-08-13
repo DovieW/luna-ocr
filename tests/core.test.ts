@@ -6,6 +6,7 @@ import { MODELS, modelByAlias } from "../src/models";
 import { buildRequest, infer } from "../src/provider";
 import { resultSchema } from "../src/schema";
 import { getConfiguredModel, setConfiguredModel } from "../src/config";
+import { renderUsage, summarizeUsage } from "../src/usage";
 
 let directory = "";
 beforeEach(async () => { directory = await mkdtemp(join(tmpdir(), "luna-ocr-test-")); process.env.XDG_CONFIG_HOME = directory; process.env.OPENAI_API_KEY = "test"; process.env.GROQ_API_KEY = "test"; });
@@ -27,4 +28,15 @@ test("inference validates and computes cost", async () => {
   const output = await infer(modelByAlias("gpt-5-nano"), new Uint8Array([1]), "image/png", fetcher);
   expect(output.result.content).toBe("hello");
   expect(output.cost).toBeCloseTo(0.000054);
+});
+
+test("usage summary aggregates models and marks unknown costs", () => {
+  const entries = [
+    { timestamp: "2026-01-01T00:00:00Z", alias: "luna", provider: "openai", inputTokens: 100, outputTokens: 5, cost: 0.001, elapsedMs: 200 },
+    { timestamp: "2026-01-01T00:00:01Z", alias: "luna", provider: "openai", elapsedMs: 400 },
+  ];
+  const row = summarizeUsage(entries).get("luna")!;
+  expect(row.calls).toBe(2);
+  expect(row.unknownCostCalls).toBe(1);
+  expect(renderUsage(entries)).toContain("Total estimated cost: $0.001000");
 });
