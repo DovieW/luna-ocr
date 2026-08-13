@@ -32,5 +32,16 @@ export function captureRegionCommand(path: string): string[] {
 }
 
 export async function copyText(text: string): Promise<void> { await run(["wl-copy", "--type", "text/plain;charset=utf-8"], { input: text }); }
-export async function notify(body: string): Promise<void> { await run(["notify-send", "--app-name=Luna OCR", "Luna OCR", body]); }
+export function notificationCommand(body: string): string[] {
+  return [
+    "notify-send",
+    "--app-name=Luna OCR",
+    "--transient",
+    "--expire-time=2000",
+    "--hint=string:x-canonical-private-synchronous:luna-ocr",
+    "Luna OCR",
+    body,
+  ];
+}
+export async function notify(body: string): Promise<void> { await run(notificationCommand(body)); }
 export async function commandAvailable(command: string): Promise<boolean> { try { return (await run(["sh", "-c", `command -v "$1" >/dev/null`, "sh", command])).code === 0; } catch { return false; } }

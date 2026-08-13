@@ -7,7 +7,7 @@ import { infer } from "./provider";
 import { captureRegion, commandAvailable, copyText, notify } from "./desktop";
 import { readUsage, recordUsage, renderUsage, summarizeUsage } from "./usage";
 
-const VERSION = "0.1.5";
+const VERSION = "0.1.6";
 const args = process.argv.slice(2);
 
 function option(name: string): string | undefined { const index = args.indexOf(name); return index >= 0 ? args[index + 1] : undefined; }

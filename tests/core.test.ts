@@ -7,7 +7,7 @@ import { buildRequest, infer } from "../src/provider";
 import { resultSchema } from "../src/schema";
 import { getConfiguredModel, setConfiguredModel } from "../src/config";
 import { renderUsage, summarizeUsage } from "../src/usage";
-import { captureRegionCommand } from "../src/desktop";
+import { captureRegionCommand, notificationCommand } from "../src/desktop";
 
 let directory = "";
 beforeEach(async () => { directory = await mkdtemp(join(tmpdir(), "luna-ocr-test-")); process.env.XDG_CONFIG_HOME = directory; process.env.OPENAI_API_KEY = "test"; process.env.GROQ_API_KEY = "test"; });
@@ -18,6 +18,12 @@ test("region capture bypasses the screenshot editor", () => {
   expect(captureRegionCommand("/tmp/capture.png")).toEqual([
     "flameshot", "gui", "--path", "/tmp/capture.png", "--accept-on-select",
   ]);
+});
+test("clipboard notification is brief, transient, and replaceable", () => {
+  const command = notificationCommand("Copied: hello");
+  expect(command).toContain("--transient");
+  expect(command).toContain("--expire-time=2000");
+  expect(command).toContain("--hint=string:x-canonical-private-synchronous:luna-ocr");
 });
 test("unknown model is rejected", () => expect(() => modelByAlias("bogus")).toThrow("Unknown model"));
 test("empty contract rejects content", () => expect(() => resultSchema.parse({ kind: "empty", content: "x" })).toThrow());
