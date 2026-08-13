@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MODELS, modelByAlias } from "../src/models";
 import { buildRequest, infer } from "../src/provider";
-import { resultSchema } from "../src/schema";
+import { resultSchema, SYSTEM_PROMPT } from "../src/schema";
 import { getConfiguredModel, setConfiguredModel } from "../src/config";
 import { renderUsage, summarizeUsage } from "../src/usage";
 import { captureRegionCommand, notificationCommand } from "../src/desktop";
@@ -28,6 +28,11 @@ test("clipboard notification is brief, transient, and replaceable", () => {
 test("unknown model is rejected", () => expect(() => modelByAlias("bogus")).toThrow("Unknown model"));
 test("empty contract rejects content", () => expect(() => resultSchema.parse({ kind: "empty", content: "x" })).toThrow());
 test("literal whitespace survives validation", () => expect(resultSchema.parse({ kind: "text", content: "A\n  B" }).content).toBe("A\n  B"));
+test("prompt names confidently recognized subjects before describing them", () => {
+  expect(SYSTEM_PROMPT).toContain("confidently recognizable conventional identity");
+  expect(SYSTEM_PROMPT).toContain("return only its canonical name");
+  expect(SYSTEM_PROMPT).toContain("without guessing its identity");
+});
 test("configuration defaults to luna and persists atomically", async () => { expect(await getConfiguredModel()).toBe("luna"); await setConfiguredModel("groq-qwen"); expect(await getConfiguredModel()).toBe("groq-qwen"); });
 
 describe("request adapters", () => {
