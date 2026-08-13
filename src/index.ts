@@ -7,12 +7,36 @@ import { infer } from "./provider";
 import { captureRegion, commandAvailable, copyText, notify } from "./desktop";
 import { readUsage, recordUsage, renderUsage, summarizeUsage } from "./usage";
 
-const VERSION = "0.1.1";
+const VERSION = "0.1.2";
 const args = process.argv.slice(2);
 
 function option(name: string): string | undefined { const index = args.indexOf(name); return index >= 0 ? args[index + 1] : undefined; }
-function provider(value: string | undefined): Provider { if (!PROVIDERS.includes(value as Provider)) throw new Error(`Unknown provider: ${value}`); return value as Provider; }
+function provider(value: string | undefined): Provider {
+  if (!value) throw new Error(`Missing provider. Choose one of: ${PROVIDERS.join(", ")}`);
+  if (!PROVIDERS.includes(value as Provider)) throw new Error(`Unknown provider: ${value}. Choose one of: ${PROVIDERS.join(", ")}`);
+  return value as Provider;
+}
 function preview(text: string): string { const line = text.split(/\r?\n/, 1)[0] ?? ""; return line.length > 120 ? `${line.slice(0, 117)}...` : line; }
+
+function printHelp(): void {
+  console.log(`Usage: luna-ocr <command> [options]
+
+Commands:
+  capture                         Select a region and copy its OCR result
+  extract [IMAGE]                 Extract from an image, or select a region
+  compare [IMAGE]                 Compare supported models
+  model list|get|set <MODEL>      List or choose the default model
+  credentials set <PROVIDER>      Securely enter and encrypt an API key
+  credentials status <PROVIDER>   Check whether an encrypted key exists
+  credentials remove <PROVIDER>   Remove an encrypted key
+  usage [--json]                  Summarize requests, tokens, latency, and cost
+  doctor                          Check runtime dependencies and credentials
+  version                         Print the installed version
+
+Providers: ${PROVIDERS.join(", ")}
+
+Example: luna-ocr credentials set openai`);
+}
 
 async function imageFromArgument(position: number): Promise<Uint8Array | null> {
   const path = args[position];
@@ -21,6 +45,7 @@ async function imageFromArgument(position: number): Promise<Uint8Array | null> {
 
 async function main(): Promise<void> {
   const command = args[0] ?? "help";
+  if (command === "help" || command === "--help" || command === "-h") return printHelp();
   if (command === "version" || command === "--version") return console.log(`luna-ocr ${VERSION}`);
   if (command === "model") {
     const action = args[1];
@@ -29,7 +54,13 @@ async function main(): Promise<void> {
     if (action === "set") { modelByAlias(args[2] ?? ""); await setConfiguredModel(args[2]!); return console.log(`Default model: ${args[2]}`); }
   }
   if (command === "credentials") {
-    const action = args[1], selected = provider(args[2]);
+    const action = args[1];
+    if (action === "help" || action === "--help" || !action) {
+      console.log("Usage: luna-ocr credentials set|status|remove <openai|cerebras|baseten|groq|together>");
+      return;
+    }
+    if (!["set", "status", "remove"].includes(action)) throw new Error(`Unknown credentials action: ${action}`);
+    const selected = provider(args[2]);
     if (action === "set") return setCredential(selected);
     if (action === "remove") { await removeCredential(selected); return console.log(`Removed ${selected} credential`); }
     if (action === "status") return console.log(`${selected}: ${(await credentialExists(selected)) ? "configured" : "missing"}`);
@@ -79,7 +110,7 @@ async function main(): Promise<void> {
     }
     return;
   }
-  console.log("Usage: luna-ocr capture|extract|compare|model|credentials|usage|doctor|version");
+  throw new Error(`Unknown command: ${command}. Run luna-ocr help.`);
 }
 
 main().catch(async (error) => {

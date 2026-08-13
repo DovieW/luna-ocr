@@ -1,5 +1,5 @@
 import { access, mkdir, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { Provider } from "./models";
 
 export function credentialName(provider: Provider): string {
@@ -18,8 +18,14 @@ export async function credentialExists(provider: Provider): Promise<boolean> {
 export async function setCredential(provider: Provider): Promise<void> {
   if (!process.stdin.isTTY) throw new Error("Credential entry requires a terminal");
   const destination = credentialPath(provider);
-  await mkdir(join(destination, ".."), { recursive: true, mode: 0o700 });
-  const prompt = Bun.spawn(["systemd-ask-password", `Enter ${provider} API key:`], { stdout: "pipe", stderr: "inherit" });
+  await mkdir(dirname(destination), { recursive: true, mode: 0o700 });
+  const prompt = Bun.spawn([
+    "systemd-ask-password",
+    "--user",
+    "--timeout=0",
+    "--echo=masked",
+    `Paste the ${provider} API key`,
+  ], { stdout: "pipe", stderr: "inherit" });
   const secret = await new Response(prompt.stdout).text();
   if (await prompt.exited !== 0 || !secret.trim()) throw new Error("Credential entry cancelled");
   const proc = Bun.spawn(["systemd-creds", "encrypt", "--user", `--name=${credentialName(provider)}`, "-", destination], { stdin: "pipe", stdout: "inherit", stderr: "inherit" });
