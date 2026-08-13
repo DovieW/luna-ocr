@@ -12,7 +12,7 @@ OpenAI GPT-5.6 Luna Fast (default), GPT-5.4 Nano, GPT-5 Nano, Cerebras Gemma 4 3
 
 ## Install
 
-Download `luna-ocr-linux-x64` and its checksum from the latest GitHub release, verify it, and place it on `PATH`. Runtime dependencies are `flameshot`, `wl-clipboard`, `libnotify-bin`, `systemd-creds`, and optionally ImageMagick.
+Download `luna-ocr-linux-x64` and its checksum from the latest GitHub release, verify it, and place it on `PATH`. Runtime dependencies are KDE Spectacle, `wl-clipboard`, `libnotify-bin`, `systemd-creds`, and optionally ImageMagick. The region selector captures immediately when the mouse is released; it does not open an annotation editor.
 
 ```bash
 luna-ocr credentials set openai

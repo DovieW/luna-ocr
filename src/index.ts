@@ -7,7 +7,7 @@ import { infer } from "./provider";
 import { captureRegion, commandAvailable, copyText, notify } from "./desktop";
 import { readUsage, recordUsage, renderUsage, summarizeUsage } from "./usage";
 
-const VERSION = "0.1.3";
+const VERSION = "0.1.4";
 const args = process.argv.slice(2);
 
 function option(name: string): string | undefined { const index = args.indexOf(name); return index >= 0 ? args[index + 1] : undefined; }
@@ -67,7 +67,7 @@ async function main(): Promise<void> {
   }
   if (command === "doctor") {
     let failed = false;
-    for (const tool of ["flameshot", "wl-copy", "notify-send", "systemd-creds"]) { const ok = await commandAvailable(tool); console.log(`${ok ? "ok" : "missing"}\t${tool}`); failed ||= !ok; }
+    for (const tool of ["spectacle", "wl-copy", "notify-send", "systemd-creds"]) { const ok = await commandAvailable(tool); console.log(`${ok ? "ok" : "missing"}\t${tool}`); failed ||= !ok; }
     for (const item of PROVIDERS) console.log(`${await credentialExists(item) ? "ok" : "optional"}\t${item} credential`);
     if (failed) process.exitCode = 1;
     return;

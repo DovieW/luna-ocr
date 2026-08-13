@@ -7,12 +7,18 @@ import { buildRequest, infer } from "../src/provider";
 import { resultSchema } from "../src/schema";
 import { getConfiguredModel, setConfiguredModel } from "../src/config";
 import { renderUsage, summarizeUsage } from "../src/usage";
+import { captureRegionCommand } from "../src/desktop";
 
 let directory = "";
 beforeEach(async () => { directory = await mkdtemp(join(tmpdir(), "luna-ocr-test-")); process.env.XDG_CONFIG_HOME = directory; process.env.OPENAI_API_KEY = "test"; process.env.GROQ_API_KEY = "test"; });
 afterEach(async () => { await rm(directory, { recursive: true, force: true }); delete process.env.XDG_CONFIG_HOME; delete process.env.OPENAI_API_KEY; delete process.env.GROQ_API_KEY; });
 
 test("catalog contains exactly eight direct vision models", () => { expect(MODELS).toHaveLength(8); expect(new Set(MODELS.map((model) => model.alias)).size).toBe(8); });
+test("region capture bypasses the screenshot editor", () => {
+  expect(captureRegionCommand("/tmp/capture.png")).toEqual([
+    "spectacle", "--region", "--background", "--nonotify", "--output", "/tmp/capture.png",
+  ]);
+});
 test("unknown model is rejected", () => expect(() => modelByAlias("bogus")).toThrow("Unknown model"));
 test("empty contract rejects content", () => expect(() => resultSchema.parse({ kind: "empty", content: "x" })).toThrow());
 test("literal whitespace survives validation", () => expect(resultSchema.parse({ kind: "text", content: "A\n  B" }).content).toBe("A\n  B"));
