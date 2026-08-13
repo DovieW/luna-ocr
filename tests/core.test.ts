@@ -16,7 +16,7 @@ afterEach(async () => { await rm(directory, { recursive: true, force: true }); d
 test("catalog contains exactly eight direct vision models", () => { expect(MODELS).toHaveLength(8); expect(new Set(MODELS.map((model) => model.alias)).size).toBe(8); });
 test("region capture bypasses the screenshot editor", () => {
   expect(captureRegionCommand("/tmp/capture.png")).toEqual([
-    "spectacle", "--region", "--background", "--nonotify", "--output", "/tmp/capture.png",
+    "flameshot", "gui", "--path", "/tmp/capture.png", "--accept-on-select",
   ]);
 });
 test("unknown model is rejected", () => expect(() => modelByAlias("bogus")).toThrow("Unknown model"));

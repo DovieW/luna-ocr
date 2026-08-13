@@ -1,6 +1,6 @@
 {
   "name": "luna-ocr",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Fast, structured screen OCR across eight cloud vision models",
   "private": true,
   "type": "module",
